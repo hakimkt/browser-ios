@@ -48,9 +48,9 @@ class TopSitesPanel: UIViewController, HomePanel {
         view.isHidden = !PrivateBrowsing.singleton.isOn
         return view
     }()
-
+    
     fileprivate lazy var privateTabGraphic: UIImageView = {
-        return UIImageView(image: UIImage(named: "privateLion"))
+        return UIImageView(image: UIImage(named: "private_glasses"))
     }()
 
     fileprivate lazy var privateTabTitleLabel: UILabel = {
@@ -87,12 +87,32 @@ class TopSitesPanel: UIViewController, HomePanel {
         view.addTarget(self, action: #selector(showPrivateTabInfo), for: .touchUpInside)
         return view
     }()
+    
+    fileprivate var ddgLogo = UIImageView(image: UIImage(named: "duckduckgo"))
+    
+    fileprivate lazy var ddgLabel: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 0
+        label.textColor = BraveUX.GreyD
+        label.font = UIFont.systemFont(ofSize: 14, weight: UIFontWeightRegular)
+        label.text = Strings.DDG_promotion
+        return label
+    }()
+    
+    fileprivate lazy var ddgButton: UIControl = {
+        let control = UIControl()
+        control.addTarget(self, action: #selector(showDDGCallout), for: .touchUpInside)
+        return control
+    }()
 
     fileprivate lazy var braveShieldStatsView: BraveShieldStatsView = {
         let view = BraveShieldStatsView(frame: CGRect.zero)
         view.autoresizingMask = [.flexibleWidth]
         return view
     }()
+    
+    /// Called after user taps on ddg popup to set it as a default search enginge in private browsing mode.
+    var ddgPrivateSearchCompletionBlock: (() -> ())?
 
     // MARK: - Init/lifecycle
     init() {
@@ -141,14 +161,26 @@ class TopSitesPanel: UIViewController, HomePanel {
         braveShieldStatsView.frame = statsViewFrame
 
         collection.addSubview(braveShieldStatsView)
+        
+        ddgButton.addSubview(ddgLogo)
+        ddgButton.addSubview(ddgLabel)
 
         privateTabMessageContainer.addSubview(privateTabGraphic)
         privateTabMessageContainer.addSubview(privateTabTitleLabel)
         privateTabMessageContainer.addSubview(privateTabInfoLabel)
         privateTabMessageContainer.addSubview(privateTabLinkButton)
+        privateTabMessageContainer.addSubview(ddgButton)
         collection.addSubview(privateTabMessageContainer)
 
         makeConstraints()
+        
+        if let profile = getApp().profile, profile.searchEngines.defaultEngine(forType: .privateMode).shortName == OpenSearchEngine.EngineNames.duckDuckGo {
+            hideDDG()
+        }
+        
+        ddgPrivateSearchCompletionBlock = { [weak self] in
+            self?.hideDDG()
+        }
     }
 
     override func viewDidLayoutSubviews() {
@@ -156,6 +188,10 @@ class TopSitesPanel: UIViewController, HomePanel {
 
         // This makes collection view layout to recalculate its cell size.
         collection.collectionViewLayout.invalidateLayout()
+    }
+    
+    func hideDDG() {
+        ddgButton.isHidden = true
     }
 
     /// Handles long press gesture for UICollectionView cells reorder.
@@ -196,14 +232,14 @@ class TopSitesPanel: UIViewController, HomePanel {
                 make.width.equalTo(400)
             }
             else {
-                make.top.equalTo(self.braveShieldStatsView.snp.bottom).offset(20)
+                make.top.equalTo(self.braveShieldStatsView.snp.bottom).offset(25)
                 make.leftMargin.equalTo(collection).offset(8)
                 make.rightMargin.equalTo(collection).offset(-8)
             }
             make.bottom.equalTo(collection)
         }
-
-        privateTabGraphic.snp.makeConstraints { (make) -> Void in
+        
+        privateTabGraphic.snp.makeConstraints { make in
             make.top.equalTo(0)
             make.centerX.equalTo(self.privateTabMessageContainer)
         }
@@ -229,7 +265,24 @@ class TopSitesPanel: UIViewController, HomePanel {
                 make.top.equalTo(self.privateTabInfoLabel.snp.bottom).offset(10)
                 make.left.equalTo(0)
                 make.right.equalTo(0)
-                make.bottom.equalTo(0)
+            }
+            
+            ddgLogo.snp.makeConstraints { make in
+                make.top.left.bottom.equalTo(0)
+                make.size.equalTo(38)
+            }
+            
+            ddgLabel.snp.makeConstraints { make in
+                make.top.right.bottom.equalTo(0)
+                make.left.equalTo(self.ddgLogo.snp.right).offset(5)
+                make.width.equalTo(180)
+                make.centerY.equalTo(self.ddgLogo)
+            }
+            
+            ddgButton.snp.makeConstraints { make in
+                make.top.equalTo(self.privateTabLinkButton.snp.bottom).offset(30)
+                make.centerX.equalTo(self.collection)
+                make.bottom.equalTo(-8)
             }
         } else {
             updateIphoneConstraints()
@@ -282,12 +335,32 @@ class TopSitesPanel: UIViewController, HomePanel {
             make.top.equalTo(self.privateTabInfoLabel.snp.bottom).offset(offset)
             make.left.equalTo(32)
             make.right.equalTo(-32)
+        }
+        
+        ddgLogo.snp.remakeConstraints { make in
+            make.top.left.bottom.equalTo(0)
+            make.size.equalTo(38)
+        }
+
+        ddgLabel.snp.remakeConstraints { make in
+            make.top.right.bottom.equalTo(0)
+            make.left.equalTo(self.ddgLogo.snp.right).offset(5)
+            make.width.equalTo(180)
+            make.centerY.equalTo(self.ddgLogo)
+        }
+        
+        ddgButton.snp.remakeConstraints { make in
+            make.top.equalTo(self.privateTabLinkButton.snp.bottom).offset(30)
+            make.centerX.equalTo(self.collection)
             make.bottom.equalTo(-8)
         }
         
         self.view.setNeedsUpdateConstraints()
     }
 
+    func showDDGCallout() {
+        getApp().browserViewController.presentDDGCallout(force: true)
+    }
 
     func endEditing() {
         (view.window as! BraveMainWindow).removeTouchFilter(self)
@@ -297,6 +370,12 @@ class TopSitesPanel: UIViewController, HomePanel {
     // MARK: - Private browsing modde
     func privateBrowsingModeChanged() {
         let isPrivateBrowsing = PrivateBrowsing.singleton.isOn
+        
+        if isPrivateBrowsing {
+            let profile = getApp().profile
+            
+            ddgButton.isHidden = profile?.searchEngines.defaultEngine(forType: .privateMode).shortName == OpenSearchEngine.EngineNames.duckDuckGo 
+        }
 
         // TODO: This entire blockshould be abstracted
         //  to make code in this class DRY (duplicates from elsewhere)
@@ -412,9 +491,12 @@ extension TopSitesPanel: ThumbnailCellDelegate {
 
             let editPopup = UIAlertController.userTextInputAlert(title: Strings.Edit_Bookmark, message: urlString,
                                                              startingText: title, startingText2: fav.url,
-                                                             placeholder2: urlString) { callbackTitle, callbackUrl in
+                                                             placeholder2: urlString,
+                                                             keyboardType2: .URL) { callbackTitle, callbackUrl in
                 if let cTitle = callbackTitle, !cTitle.isEmpty, let cUrl = callbackUrl, !cUrl.isEmpty {
-                    fav.update(customTitle: cTitle, url: cUrl, save: true)
+                    if URL(string: cUrl) != nil {
+                        fav.update(customTitle: cTitle, url: cUrl, save: true)
+                    }
                 }
                 self.dataSource.isEditing = false
             }

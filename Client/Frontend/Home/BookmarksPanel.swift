@@ -365,7 +365,7 @@ class BookmarksPanel: SiteTableViewController, HomePanel {
             break
         case NSNotification.Name.UITextFieldTextDidChange:
             if let okAction = addBookmarksFolderOkAction, let textField = notification.object as? UITextField {
-                okAction.isEnabled = (textField.text?.characters.count ?? 0) > 0
+                okAction.isEnabled = (textField.text?.count ?? 0) > 0
             }
             break
         default:
@@ -454,6 +454,8 @@ class BookmarksPanel: SiteTableViewController, HomePanel {
         cell.textLabel?.text = item.displayTitle ?? item.url
         cell.textLabel?.lineBreakMode = .byTruncatingTail
         
+        cell.contentView.backgroundColor = .white
+        
         if !item.isFolder {
             configCell(icon: item.domain?.favicon, longPressForContextMenu: true)
             cell.textLabel?.font = UIFont.systemFont(ofSize: fontSize)
@@ -484,17 +486,7 @@ class BookmarksPanel: SiteTableViewController, HomePanel {
                 }
             }
             else {
-                postAsyncToMain {
-                    cell.imageView?.sd_setImage(with: iconUrl, completed: { (img, err, type, url) in
-                        guard let img = img else {
-                            // avoid retrying to find an icon when none can be found, hack skips FaviconFetch
-                            ImageCache.shared.cache(FaviconFetcher.defaultFavicon, url: cacheWithUrl, type: .square, callback: nil)
-                            cell.imageView?.image = FaviconFetcher.defaultFavicon
-                            return
-                        }
-                        ImageCache.shared.cache(img, url: cacheWithUrl, type: .square, callback: nil)
-                    })
-                }
+                cell.imageView?.setFaviconImage(with: iconUrl, cacheUrl: cacheWithUrl)
             }
         })
     }

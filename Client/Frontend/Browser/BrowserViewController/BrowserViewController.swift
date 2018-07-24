@@ -597,6 +597,45 @@ class BrowserViewController: UIViewController {
             
             return .flyUp
         }
+        popup.showWithType(showType: .flyUp)
+    }
+    
+    func presentDDGCallout(force: Bool = false) {
+        let profile = getApp().profile
+        if profile?.prefs.boolForKey(kPrefKeyPopupForDDG) == true && !force {
+            return
+        }
+        
+        // Do not show ddg popup if user already chose it for private browsing.
+        if profile?.searchEngines.defaultEngine(forType: .privateMode).shortName == OpenSearchEngine.EngineNames.duckDuckGo {
+            // Showing only pin code popup.
+            presentBrowserLockCallout()
+            return
+        }
+        
+        weak var weakSelf = self
+        let popup = AlertPopupView(image: UIImage(named: "duckduckgo"), title: Strings.DDG_callout_title, message: Strings.DDG_callout_message)
+        popup.dismissHandler = {
+            weakSelf?.presentBrowserLockCallout()
+        }
+        popup.addButton(title: Strings.DDG_callout_no) { _ in
+            weakSelf?.profile.prefs.setBool(true, forKey: kPrefKeyPopupForDDG)
+            return .flyDown
+        }
+        popup.addDefaultButton(title: Strings.DDG_callout_enable) { _ in
+            if getApp().profile == nil {
+                return .flyUp
+            }
+            
+            weakSelf?.profile.prefs.setBool(true, forKey: kPrefKeyPopupForDDG)
+            weakSelf?.profile.searchEngines.defaultEngine(OpenSearchEngine.EngineNames.duckDuckGo, forType: .privateMode)
+            
+            if let topSitesPanel = weakSelf?.homePanelController?.topSitesPanel as? TopSitesPanel {
+                topSitesPanel.ddgPrivateSearchCompletionBlock?()
+            }
+            
+            return .flyUp
+        }
         popup.showWithType(showType: .normal)
     }
 
@@ -974,7 +1013,7 @@ class BrowserViewController: UIViewController {
         // We don't allow to have 2 same favorites.
         if !FavoritesHelper.isAlreadyAdded(url) {
             let addToFavoritesActivity = AddToFavoritesActivity() { [weak tab] in
-                FavoritesHelper.add(url: url, title: tab?.displayTitle, color: tab?.color)
+                FavoritesHelper.add(url: url, title: tab?.displayTitle)
             }
             activities.append(addToFavoritesActivity)
         }

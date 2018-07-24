@@ -53,7 +53,8 @@ class TabBarCell: UICollectionViewCell {
         title.snp.makeConstraints({ (make) in
             make.top.bottom.equalTo(self)
             make.left.equalTo(self).inset(16)
-            make.right.equalTo(close.snp.left).inset(8)
+
+            make.right.equalTo(close.snp.left)
         })
         
         close.setImage(UIImage(named: "close")?.withRenderingMode(.alwaysTemplate), for: .normal)
@@ -358,10 +359,9 @@ extension TabsBarViewController: UICollectionViewDelegate, UICollectionViewDataS
             return CGSize(width: view.frame.width, height: view.frame.height)
         }
         
-        let newTabButtonWidth = CGFloat(UIDevice.current.userInterfaceIdiom == .pad ? BraveUX.TabsBarPlusButtonWidth : 0)
         let tabsAndButtonWidth = CGFloat(tabList.count()) * minTabWidth
-        if tabsAndButtonWidth < collectionView.frame.width - newTabButtonWidth {
-            let maxWidth = (collectionView.frame.width - newTabButtonWidth) / CGFloat(tabList.count())
+        if tabsAndButtonWidth < collectionView.frame.width {
+            let maxWidth = (collectionView.frame.width) / CGFloat(tabList.count())
             return CGSize(width: maxWidth, height: view.frame.height)
         }
         
