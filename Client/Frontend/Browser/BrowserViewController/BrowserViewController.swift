@@ -160,7 +160,11 @@ class BrowserViewController: UIViewController {
         NotificationCenter.default.addObserver(self, selector: #selector(rightSwipeToolbar), name: RightSwipeToolbarNotification, object: nil)
         NotificationCenter.default.addObserver(forName: .UIWindowDidBecomeKey, object: nil, queue: nil) { [weak self] _ in
             if UIApplication.shared.keyWindow == self?.view.window {
+                self?.tabManager.selectedTab?.webView?.isUserInteractionEnabled = false
                 self?.tabManager.selectedTab?.webView?.reload()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: {
+                    self?.tabManager.selectedTab?.webView?.isUserInteractionEnabled = true
+                })
             }
         }
     }
